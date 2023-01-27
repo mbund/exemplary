@@ -1,0 +1,39 @@
+name: Update linguist languages
+
+permissions:
+  contents: write
+
+on:
+  push:
+  schedule:
+    - cron: "50 4 * * *" # daily at 5:00 (UTC) (scheduled actions are usually 10 minutes late)
+
+jobs:
+  linguist:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+
+      - name: Install yq
+        run: sudo snap install yq
+
+      - name: Swap out languages
+        run: |
+          extensions=$(curl https://raw.githubusercontent.com/github/linguist/master/lib/linguist/languages.yml | yq '.[] | select(.type != "data") | select(.type != "prose") | .extensions | select(. != null) | .[0]' | shuf | head -n 8 | cut -d '"' -f 2)
+          rm -r src | true
+          mkdir -p src
+          i=1
+          for var in $extensions; do
+              head -c $((i * $(shuf -i 1-10 -n 1))) < /dev/zero | tr '\0' 'A' > src/$i$var
+              i=$((i+1))
+          done
+
+      - name: Commit and push changes
+        uses: devops-infra/action-commit-push@master
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          commit_message: |
+            Initial commit :rocket:
+          amend: true
+          force: true
